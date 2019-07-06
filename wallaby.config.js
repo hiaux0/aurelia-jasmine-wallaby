@@ -1,58 +1,94 @@
-const { AureliaPlugin } = require('aurelia-webpack-plugin');
+const path = require('path');
 let wallabyWebpack = require('wallaby-webpack');
-const webpackConfig = require('./webpack.config');
-// require('aurelia-polyfills');
-
-let wallabyPostprocessor = wallabyWebpack({
-  // ...webpackConfig,
-  entryPatterns: ['test/unit/setup.js', 'test/unit/**/*.spec.js'],
-  plugins: [
-    new AureliaPlugin({
-      aureliaApp: undefined
-    })
-  ],
-  node: {
-    fs: 'empty'
-  }
-});
+let AureliaPlugin = require('aurelia-webpack-plugin').AureliaPlugin;
+let DefinePlugin = require('webpack').DefinePlugin;
+let webpack = require('webpack');
 
 module.exports = function(wallaby) {
-  return {
-    files: [
-      { pattern: 'src/**/*.js', load: false },
-      { pattern: 'test/stubs/**/*.js', load: false },
-      { pattern: 'test/unit/setup.js', load: false }
-    ],
-
-    tests: [
-      { pattern: 'test/unit/**/*.spec.js', load: false }
-    ],
-
-    env: {
-      kind: 'electron'
-      // type: 'node',
-      // runner: 'node'
+  let wallabyPostprocessor = wallabyWebpack({
+    resolve: {
+      modules: [
+        path.join(wallaby.projectCacheDir, 'src'),
+        path.join(__dirname, 'node_modules'),
+        path.join(__dirname, '../../node_modules')
+      ]
+    },
+    'node': {
+      'fs': 'empty'
     },
 
-    compilers: {
-      '**/*.js': wallaby.compilers.babel({
-        'presets': ['@babel/preset-env'],
-        'plugins': [
-          '@babel/plugin-transform-regenerator',
-          ['@babel/plugin-proposal-decorators', { 'legacy': true }],
-          '@babel/plugin-proposal-class-properties'
+    module: {
+      rules: [{
+        test: /\.html$/i,
+        loader: 'html-loader'
+      },
+      {
+        test: /\.png$|\.gif$|\.svg$|\.jpe?g$/,
+        loaders: 'null'
+      },
+      {
+        test: /\.css$/i,
+        issuer: [{
+          not: [{
+            test: /\.html$/i
+          }]
+        }],
+        use: ['style-loader', 'css-loader']
+      },
+      {
+        test: /\.css$/i,
+        issuer: [{
+          test: /\.html$/i
+        }],
+        use: 'css-loader'
+      }
+      ]
+    },
 
-          // 'transform-async-generator-functions',
-          // 'syntax-async-functions',
-          // 'transform-decorators-legacy',
-        ]
-      })
+    plugins: [
+      new DefinePlugin({
+        AURELIA_WEBPACK_2_0: undefined
+      }),
+      new AureliaPlugin({
+        aureliaApp: undefined,
+        viewsFor: '{' + path.relative(path.resolve(), wallaby.projectCacheDir) + '/,}**/!(tslib)*.{ts,js}'
+      }),
+      new webpack.NormalModuleReplacementPlugin(/\.(png|jpe?g|gif|svg|woff|woff2|ttf|eot|ico||scss|css)$/, 'node-noop'),
+      new webpack.ProvidePlugin({})
+    ]
+  });
+
+  return {
+    files: [{
+      pattern: 'src/**/*.+(js|html)',
+      load: false
+    },
+    {
+      pattern: 'test/unit/setup.js',
+      load: false
+    }
+    ],
+
+
+    tests: [{
+      pattern: 'test/unit/**/*.spec.js',
+      load: false
+    }],
+
+    compilers: {
+      '**/*.js': wallaby.compilers.babel()
+    },
+
+    env: {
+      kind: 'chrome'
     },
 
     postprocessor: wallabyPostprocessor,
 
     setup: function() {
       window.__moduleBundler.loadTests();
-    }
+    },
+
+    debug: true
   };
 };
