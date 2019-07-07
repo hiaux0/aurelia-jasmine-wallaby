@@ -1,1 +1,1 @@
-Aurelia CLI project with integrated with [Wallaby.js](https://wallabyjs.com/)
+Aurelia CLI project integrated with [Wallaby.js](https://wallabyjs.com/)
